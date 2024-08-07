@@ -1249,11 +1249,8 @@ func (p *Markdown) listItem(data []byte, flags *ListType) int {
 		i++
 	}
 
-	// get working buffer
-	var raw bytes.Buffer
-
 	// put the first line into the working buffer
-	raw.Write(data[line:i])
+	listItemStart := line
 	line = i
 
 	// process the following lines
@@ -1308,7 +1305,6 @@ gatherlines:
 			}
 			// we are in a codeblock, write line, and continue
 			if codeBlockMarker != "" || marker != "" {
-				raw.Write(data[line+indentIndex : i])
 				line = i
 				continue gatherlines
 			}
@@ -1340,7 +1336,7 @@ gatherlines:
 
 			// is this the first item in the nested list?
 			if sublist == 0 {
-				sublist = raw.Len()
+				sublist = line - listItemStart
 			}
 
 		// is this a nested prefix heading?
@@ -1376,7 +1372,6 @@ gatherlines:
 
 		// a blank line means this should be parsed as a block
 		case containsBlankLine:
-			raw.WriteByte('\n')
 			*flags |= ListItemContainsBlock
 		}
 
@@ -1384,16 +1379,12 @@ gatherlines:
 		// re-introduce the blank into the buffer
 		if containsBlankLine {
 			containsBlankLine = false
-			raw.WriteByte('\n')
 		}
-
-		// add the line into the working buffer without prefix
-		raw.Write(data[line+indentIndex : i])
 
 		line = i
 	}
 
-	rawBytes := raw.Bytes()
+	rawBytes := data[listItemStart:line]
 
 	block := p.addBlock(Item, nil)
 	block.ListFlags = *flags
